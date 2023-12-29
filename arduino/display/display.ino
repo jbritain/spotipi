@@ -66,6 +66,7 @@ void loop() {
     } else {
       counter--;
     }
+    constrain(counter, 0, 100);
     Serial.print(counter);
   };
   previousEncoderState = encoderState;

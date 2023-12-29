@@ -18,19 +18,19 @@ def async_call_later(seconds, callback):
 
 # every hour we must get a new token
 async def token_update_timer():
-   spotify.token = spotify.get_token()
-   async_call_later(3600, token_update_timer)
+    spotify.token = spotify.get_token()
+    async_call_later(3600, token_update_timer)
 
-# # arduino stuff
-# port = 'COM8'
-# baudrate = 115200
-# arduino = serial.Serial(port=port,  baudrate=baudrate, timeout=.1)
+# arduino stuff
+port = 'COM8'
+baudrate = 115200
+arduino = serial.Serial(port=port,  baudrate=baudrate, timeout=.1)
 
-# def write(x):
-#   arduino.write(bytes(x,  'utf-8'))
+def write(x):
+    arduino.write(bytes(x,  'utf-8'))
 
-# def read():
-#   return arduino.readline()
+def read():
+    return arduino.readline()
 
 # spotify stuff
 CLIENT_ID = "4e01751363414764a80826923907e8ac"
@@ -40,3 +40,19 @@ INITIAL_TOKEN = "BQAFMPbgUFP-EtsLx1nFnPTpjzCA5BhKC2quHSwAsHBCV4fLbW6iRHIWSTyDx4K
 spotify = Spotify(INITIAL_TOKEN, CLIENT_ID, CLIENT_SECRET)
 
 print(spotify.get_playback_info())
+last_vol = 0
+vol = 0
+
+while(True):
+    
+    # get current volume
+    data = read().decode()
+    if data != '':
+        vol = int(data.split("-")[-1])
+    if vol != last_vol:
+        print(vol)
+        spotify.set_volume(vol)
+        last_vol = vol
+
+    write(spotify.get_playback_info().to_display(int(time.time())))
+

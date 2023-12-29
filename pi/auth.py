@@ -12,18 +12,40 @@ import base64
 
 class Auth:
 	def __init__(self, client_id, client_secret):
-		self.token = load_token()
-		if self.token is None:
-			self.token = get_token(client_id, client_secret)
+		loaded_token = load_token()
+		
+		self.token = loaded_token[0].removesuffix("\n")
+		self.refresh_token = loaded_token[1]
+
+		if not check_token_validity(self.token):
+			print("Token is not valid")
+			fetched_token = get_token(client_id, client_secret)
+			self.token = loaded_token[0].removesuffix("\n")
+			self.refresh_token = loaded_token[1]
+		
 
 # we store the token in local storage in case we restart and the token is still valid or something idk
 # also used to load the token after it's written by my web server clusterfuck
 def load_token():
+	print("Loading token from file")
 	try:
-		with open("token.txt", "r") as token:
-			return token.read()
+		with open("token.txt", "r") as f:
+			token = f.readlines()
+			print("Found token in file")
+			return token
 	except Exception:
-		return None
+		print("No token in file")
+		return ["", ""]
+	
+def check_token_validity(token):
+	req = requests.get(
+		"https://api.spotify.com/v1/me",
+		headers={
+				"Authorization": f"Bearer {token}"
+			},
+		)
+	
+	return req.status_code == 200
 
 # a web server which listens on port 8080 and handles authentication with spotify
 # this is what the redirect URI for the spotify API settings talks to
@@ -74,13 +96,14 @@ class CallbackHandler(http.server.BaseHTTPRequestHandler):
 
 		if (req.status_code == 200):
 			token = req.json().get("access_token")
+			refresh_token = req.json().get("refresh_token")
 
 			# store the token in the text file
 			# this is almost the worst way of communicating between threads
 			# but it kinda makes sense since we would store this at some point anyway
 			with open("token.txt", "w") as f:
-				f.write(token)
-
+				f.write(token + "\n" + refresh_token)
+				print("Fetched token from server and saved to file")
 			# if everything worked just close the tab lmao
 			self.wfile.write(b"<script>window.close()</script>authorized!") 
 		else:
